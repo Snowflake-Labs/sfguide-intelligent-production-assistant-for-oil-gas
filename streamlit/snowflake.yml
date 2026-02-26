@@ -1,0 +1,14 @@
+definition_version: 2
+
+entities:
+  ipa_app:
+    type: streamlit
+    identifier:
+      name: IPA_DEMO
+    title: "Intelligent Production Assistant"
+    query_warehouse: CURSOR_WH
+    main_file: 1_Mission_Control.py
+    pages_dir: pages/
+    stage: IPA.APP.STREAMLIT_STAGE
+    artifacts:
+      - theme.py

@@ -1,0 +1,336 @@
+name: ipa_production_analytics
+description: |
+  Semantic model for Intelligent Production Assistant (IPA) - an IIoT analytics 
+  platform for oil and gas operations. Covers production monitoring, safety 
+  compliance, and operational alerts across wells, drilling rigs, and safety zones.
+
+tables:
+  - name: assets
+    description: Master list of production assets including wells, drilling rigs, and sensors
+    base_table:
+      database: IPA
+      schema: SCADA_CORE
+      table: ASSET_MASTER
+    
+    dimensions:
+      - name: asset_id
+        description: Unique identifier for the asset (e.g., WELL-RP-05, RIG-PERM-01)
+        expr: ASSET_ID
+        data_type: TEXT
+        
+      - name: asset_type
+        description: Type of asset - Rod Pump, Gas Lift, PCP, Drilling Rig, or Gas Sensor
+        expr: ASSET_TYPE
+        data_type: TEXT
+        sample_values:
+          - Rod Pump
+          - Gas Lift
+          - Drilling Rig
+          - PCP
+          - Gas Sensor
+          
+      - name: asset_name
+        description: Human-readable name of the asset
+        expr: ASSET_NAME
+        data_type: TEXT
+        
+      - name: basin
+        description: Geographic basin where the asset is located
+        expr: BASIN
+        data_type: TEXT
+        sample_values:
+          - Delaware
+          - Midland
+          - Eagle Ford
+          
+      - name: geo_zone
+        description: Safety zone designation for HSE monitoring
+        expr: GEO_ZONE
+        data_type: TEXT
+        sample_values:
+          - Zone-A
+          - Zone-B
+          - Zone-C
+          
+      - name: status
+        description: Current operational status of the asset
+        expr: STATUS
+        data_type: TEXT
+        sample_values:
+          - ACTIVE
+          - INACTIVE
+          - MAINTENANCE
+
+  - name: sensor_readings
+    description: Time-series sensor data from SCADA systems including dynamometer loads, pressures, temperatures, and gas concentrations
+    base_table:
+      database: IPA
+      schema: SCADA_CORE
+      table: TAG_HISTORY
+    
+    dimensions:
+      - name: tag_id
+        description: Unique sensor tag identifier (e.g., WELL-RP-01.DYN_LOAD, ZONE-B-H2S)
+        expr: TAG_ID
+        data_type: TEXT
+        
+      - name: quality
+        description: Data quality indicator - 192 means good quality, 0 means bad
+        expr: QUALITY
+        data_type: NUMBER
+        
+    time_dimensions:
+      - name: timestamp
+        description: Timestamp when the sensor reading was recorded
+        expr: TIMESTAMP
+        data_type: TIMESTAMP
+        
+    facts:
+      - name: value
+        description: The measured value from the sensor in its native units
+        expr: VALUE
+        data_type: NUMBER
+
+  - name: tag_registry
+    description: Metadata registry mapping sensor tags to assets and defining measurement attributes
+    base_table:
+      database: IPA
+      schema: SCADA_CORE
+      table: TAG_REGISTRY
+    
+    dimensions:
+      - name: tag_id
+        description: Unique sensor tag identifier
+        expr: TAG_ID
+        data_type: TEXT
+        
+      - name: asset_id
+        description: Asset this tag belongs to
+        expr: ASSET_ID
+        data_type: TEXT
+        
+      - name: attribute_name
+        description: Type of measurement - DYN_LOAD (dynamometer), ROP (rate of penetration), H2S_Concentration, etc.
+        expr: ATTRIBUTE_NAME
+        data_type: TEXT
+        sample_values:
+          - DYN_LOAD
+          - ROP
+          - H2S_Concentration
+          - Tubing_Pressure
+          
+      - name: uom
+        description: Engineering unit for the measurement
+        expr: UOM
+        data_type: TEXT
+        sample_values:
+          - Lbs
+          - ft/hr
+          - ppm
+          - PSI
+          
+    facts:
+      - name: min_value
+        description: Minimum expected value for this tag
+        expr: MIN_VALUE
+        data_type: NUMBER
+        
+      - name: max_value
+        description: Maximum expected value for this tag
+        expr: MAX_VALUE
+        data_type: NUMBER
+
+  - name: alerts
+    description: Agent-generated alerts and recommendations from Production Sentinel, HSE Guardian, and Cortex Strategist
+    base_table:
+      database: IPA
+      schema: SCADA_CORE
+      table: MISSION_CONTROL_ALERTS
+    
+    dimensions:
+      - name: alert_id
+        description: Unique identifier for the alert
+        expr: ALERT_ID
+        data_type: NUMBER
+        
+      - name: agent_type
+        description: The AI agent that generated the alert - SENTINEL (production), GUARDIAN (safety), or FISCAL (finance)
+        expr: AGENT_TYPE
+        data_type: TEXT
+        sample_values:
+          - SENTINEL
+          - GUARDIAN
+          - FISCAL
+          
+      - name: severity
+        description: Alert severity level - CRITICAL, WARNING, or INFO
+        expr: SEVERITY
+        data_type: TEXT
+        sample_values:
+          - CRITICAL
+          - WARNING
+          - INFO
+          
+      - name: asset_id
+        description: Asset associated with this alert
+        expr: ASSET_ID
+        data_type: TEXT
+        
+      - name: title
+        description: Brief title describing the alert
+        expr: TITLE
+        data_type: TEXT
+        
+      - name: description
+        description: Detailed description of the issue and recommended actions
+        expr: DESCRIPTION
+        data_type: TEXT
+        
+      - name: status
+        description: Current status of the alert - NEW, ACKNOWLEDGED, or RESOLVED
+        expr: STATUS
+        data_type: TEXT
+        sample_values:
+          - NEW
+          - ACKNOWLEDGED
+          - RESOLVED
+          
+      - name: acknowledged_by
+        description: User who acknowledged the alert
+        expr: ACKNOWLEDGED_BY
+        data_type: TEXT
+        
+    time_dimensions:
+      - name: created_at
+        description: When the alert was generated
+        expr: CREATED_AT
+        data_type: TIMESTAMP
+        
+      - name: acknowledged_at
+        description: When the alert was acknowledged
+        expr: ACKNOWLEDGED_AT
+        data_type: TIMESTAMP
+
+  - name: work_permits
+    description: Active safety work permits with gas exposure limits for hot work, welding, and other hazardous activities
+    base_table:
+      database: IPA
+      schema: SCADA_CORE
+      table: ACTIVE_PERMITS
+    
+    dimensions:
+      - name: permit_id
+        description: Unique permit identifier
+        expr: PERMIT_ID
+        data_type: TEXT
+        
+      - name: permit_type
+        description: Type of permit issued
+        expr: PERMIT_TYPE
+        data_type: TEXT
+        sample_values:
+          - Hot Work
+          - Confined Space
+          - General
+          
+      - name: zone
+        description: Safety zone where the permit applies
+        expr: ZONE
+        data_type: TEXT
+        
+      - name: work_type
+        description: Specific work activity covered by the permit
+        expr: WORK_TYPE
+        data_type: TEXT
+        sample_values:
+          - Welding
+          - Hot Work
+          - Cutting
+          - General Maintenance
+          
+      - name: description
+        description: Details of the permitted work
+        expr: DESCRIPTION
+        data_type: TEXT
+        
+      - name: approver
+        description: Person who approved the permit
+        expr: APPROVER
+        data_type: TEXT
+        
+      - name: status
+        description: Current permit status - ACTIVE, EXPIRED, or CANCELLED
+        expr: STATUS
+        data_type: TEXT
+        sample_values:
+          - ACTIVE
+          - EXPIRED
+          - CANCELLED
+          
+    time_dimensions:
+      - name: valid_from
+        description: Permit start date/time
+        expr: VALID_FROM
+        data_type: TIMESTAMP
+        
+      - name: valid_to
+        description: Permit expiration date/time
+        expr: VALID_TO
+        data_type: TIMESTAMP
+        
+    facts:
+      - name: max_h2s_limit
+        description: Maximum allowable H2S concentration in ppm for this permit
+        expr: MAX_H2S_LIMIT
+        data_type: NUMBER
+
+verified_queries:
+  - name: vqr_0
+    question: How many active assets are there by type?
+    sql: |
+      SELECT ASSET_TYPE, COUNT(*) as ASSET_COUNT
+      FROM IPA.SCADA_CORE.ASSET_MASTER
+      WHERE STATUS = 'ACTIVE'
+      GROUP BY ASSET_TYPE
+      ORDER BY ASSET_COUNT DESC
+
+  - name: vqr_1
+    question: What are the critical alerts that are still new?
+    sql: |
+      SELECT ALERT_ID, AGENT_TYPE, ASSET_ID, TITLE, DESCRIPTION, CREATED_AT
+      FROM IPA.SCADA_CORE.MISSION_CONTROL_ALERTS
+      WHERE SEVERITY = 'CRITICAL' AND STATUS = 'NEW'
+      ORDER BY CREATED_AT DESC
+
+  - name: vqr_2
+    question: Which work permits have H2S limits below 15 ppm?
+    sql: |
+      SELECT PERMIT_ID, ZONE, WORK_TYPE, MAX_H2S_LIMIT, VALID_FROM, VALID_TO
+      FROM IPA.SCADA_CORE.ACTIVE_PERMITS
+      WHERE STATUS = 'ACTIVE' AND MAX_H2S_LIMIT < 15
+      ORDER BY MAX_H2S_LIMIT
+
+  - name: vqr_3
+    question: How many alerts were generated by each agent?
+    sql: |
+      SELECT AGENT_TYPE, COUNT(*) as ALERT_COUNT
+      FROM IPA.SCADA_CORE.MISSION_CONTROL_ALERTS
+      GROUP BY AGENT_TYPE
+      ORDER BY ALERT_COUNT DESC
+
+  - name: vqr_4
+    question: Show me all rod pump assets
+    sql: |
+      SELECT ASSET_ID, ASSET_NAME, BASIN, GEO_ZONE, STATUS
+      FROM IPA.SCADA_CORE.ASSET_MASTER
+      WHERE ASSET_TYPE = 'Rod Pump'
+      ORDER BY ASSET_ID
+
+  - name: vqr_5
+    question: What zones have active permits?
+    sql: |
+      SELECT ZONE, COUNT(*) as PERMIT_COUNT
+      FROM IPA.SCADA_CORE.ACTIVE_PERMITS
+      WHERE STATUS = 'ACTIVE'
+      GROUP BY ZONE
+      ORDER BY PERMIT_COUNT DESC
